@@ -1,0 +1,13 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "S"]  # S = bandit 보안 규칙
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]

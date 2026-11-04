@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+# 실제 이력서 파일이 실수로 커밋되지 않도록
+*.pdf
+*.docx
+*.hwp
