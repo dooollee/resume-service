@@ -10,11 +10,17 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+// BFF: 브라우저는 같은 오리진의 /api/* 만 호출하고, Next.js 서버가 내부망의 API로 전달한다(CORS 불필요).
+const apiInternalUrl = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async rewrites() {
+    return [{ source: "/api/:path*", destination: `${apiInternalUrl}/:path*` }];
   },
 };
 

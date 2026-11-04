@@ -7,9 +7,12 @@
 | 로그·에러에 개인정보 없음 | M0 ✅ | `apps/api/tests/test_m0_security.py` |
 | 보안 헤더·CSP·CORS | M0 ✅ | `apps/api/tests/test_m0_security.py`, `apps/web/proxy.ts` |
 | 의존성 취약점 High 이상 없음 | M0 ✅ | CI `pip-audit`, `npm audit --audit-level=high` |
-| 기본 인증 필요(공개 엔드포인트 화이트리스트) | M0 ✅ (거부만) / M1 실제 인증 | `apps/api/tests/test_m0_security.py` |
-| MFA, RBAC, 감사 로그 해시 체인 | M1 | — |
-| 필드 암호화·블라인드 인덱스·키 로테이션 | M2 | — |
+| 기본 인증 필요(공개 엔드포인트 화이트리스트) | M1 ✅ | `test_m1_auth.py::test_every_route_requires_auth` (새 라우트도 자동 검사) |
+| MFA 없이는 어떤 기능도 접근 불가 | M1 ✅ | `test_m1_auth.py::test_every_route_requires_mfa` |
+| RBAC·관리자 재인증(step-up) | M1 ✅ | `test_m1_auth.py` |
+| 감사 로그 append-only·해시 체인 변조 탐지 | M1 ✅ | `test_m1_auth.py::test_audit_*` |
+| 앱 DB 계정 DDL/슈퍼유저 권한 없음 | M1 ✅ | `test_m1_auth.py::test_app_role_has_no_ddl_or_superuser` |
+| 필드 암호화·블라인드 인덱스·키 로테이션 | M2 ✅ (모듈) | `test_crypto.py` |
 | 파일 검증·악성코드 스캔·격리 워커 | M3 | — |
 | 주민등록번호 비저장 | M4 (로그 마스킹은 M0 ✅) | — |
 | 역할별 마스킹·열람 사유 | M5 | — |

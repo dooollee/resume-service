@@ -7,6 +7,15 @@ jobs:
   api:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/api } }
+    services:
+      postgres:
+        image: postgres:16.15-alpine
+        env: { POSTGRES_PASSWORD: ci-only-password }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      TEST_ADMIN_DATABASE_URL: postgresql://postgres:ci-only-password@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -1,14 +1,26 @@
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app import admin
+from app.auth import routes as auth_routes
 from app.auth.deps import require_auth
 from app.core import config
 from app.core.logging import setup_logging
 from app.core.middleware import edge
+from app.db import pool
 
 setup_logging(config.LOG_LEVEL)
+
+
+@asynccontextmanager
+async def lifespan(_):
+    pool.open(wait=True)
+    yield
+    pool.close()
+
 
 api = FastAPI(
     title="resume-service",
@@ -16,15 +28,10 @@ api = FastAPI(
     redoc_url=None,
     openapi_url="/openapi.json" if config.IS_DEV else None,
     dependencies=[Depends(require_auth)],
+    lifespan=lifespan,
 )
-
-api.add_middleware(
-    CORSMiddleware,
-    allow_origins=config.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["content-type", "x-csrf-token"],
-)
+api.include_router(auth_routes.router)
+api.include_router(admin.router)
 
 
 @api.exception_handler(RequestValidationError)

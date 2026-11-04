@@ -5,12 +5,11 @@ import sys
 
 import pytest
 from fastapi import Query
-from fastapi.testclient import TestClient
 
 from app.auth.deps import require_auth
 from app.core.logging import PIIRedactingFormatter, redact
 from app.core.middleware import SECURITY_HEADERS
-from app.main import api, app
+from app.main import api
 
 FAKE_EMAIL = "hong.gildong@example.test"
 FAKE_PHONE = "010-1234-5678"
@@ -25,11 +24,6 @@ async def boom():
 @api.get("/_test/typed")
 async def typed(age: int = Query()):
     return {"age": age}
-
-
-@pytest.fixture
-def client():
-    return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.fixture
@@ -118,12 +112,21 @@ def test_security_headers(client, path):
         assert r.headers[name.decode()] == value.decode()
 
 
-def test_cors_allows_only_whitelisted_origin(client):
-    pre = {"access-control-request-method": "GET"}
-    ok = client.options("/health", headers={"origin": "https://web.example.test", **pre})
-    assert ok.headers.get("access-control-allow-origin") == "https://web.example.test"
-    bad = client.options("/health", headers={"origin": "https://evil.example.test", **pre})
-    assert "access-control-allow-origin" not in bad.headers
+def test_cross_origin_state_change_rejected(client):
+    r = client.post("/auth/login", json={}, headers={"origin": "https://evil.example.test"})
+    assert r.status_code == 403
+    assert r.headers["x-frame-options"] == "DENY"
+
+
+def test_cors_not_enabled(client):
+    # BFF 구조: 브라우저는 같은 오리진(Next.js)만 호출하므로 CORS 허용 헤더를 절대 내보내지 않는다.
+    r = client.options("/health", headers={"origin": "https://web.example.test", "access-control-request-method": "GET"})
+    assert "access-control-allow-origin" not in r.headers
+
+
+def test_oversized_body_rejected(client):
+    r = client.post("/auth/login", content=b"x", headers={"content-length": str(50 * 1024 * 1024)})
+    assert r.status_code == 413
 
 
 # --- 기본 거부 ---

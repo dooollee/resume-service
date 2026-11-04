@@ -4,14 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const dev = process.env.NODE_ENV === "development";
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "";
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' ${dev ? "'unsafe-inline'" : `'nonce-${nonce}'`}`,
     "img-src 'self' blob: data:",
     "font-src 'self'",
-    `connect-src 'self' ${api}`.trim(),
+    "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -31,5 +30,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [{ source: "/((?!_next/static|_next/image|favicon.ico).*)" }],
+  matcher: [{ source: "/((?!api/|_next/static|_next/image|favicon.ico).*)" }],
 };
