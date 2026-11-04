@@ -36,7 +36,7 @@ class UserPatch(BaseModel):
 def create_user(conn, email: str, role: str, password: str) -> str:
     """관리자 API와 CLI(create-admin)가 공유. 초기 비밀번호는 첫 로그인 때 변경 강제."""
     email = email.strip().lower()
-    if not EMAIL_RE.match(email):
+    if not email.isascii() or not EMAIL_RE.match(email):  # 한글 입력 모드 오타(ㅁadmin@…) 방지
         raise HTTPException(422, "이메일 형식이 올바르지 않습니다")
     security.check_password_policy(password)
     if conn.execute("SELECT 1 FROM users WHERE email_bidx = %s", (email_bidx(email),)).fetchone():

@@ -5,7 +5,6 @@ import getpass
 import os
 import sys
 
-from app import crypto
 from app.db import pool, set_rls_context
 
 # (테이블, DEK 컨텍스트 접두사) — 봉투 암호화를 쓰는 테이블
@@ -20,17 +19,24 @@ def cmd_migrate(_):
 
 
 def cmd_create_admin(_):
+    from fastapi import HTTPException
+
     from app.admin import create_user
 
     email = input("관리자 이메일: ")
     password = getpass.getpass("초기 비밀번호(12자 이상, 첫 로그인 때 변경 강제): ")
-    with pool.connection() as conn:
-        create_user(conn, email, "admin", password)
+    try:
+        with pool.connection() as conn:
+            create_user(conn, email, "admin", password)
+    except HTTPException as e:
+        sys.exit(f"실패: {e.detail}")
     print("생성됨. 첫 로그인에서 MFA 등록과 비밀번호 변경이 강제됩니다.")
 
 
 def cmd_rotate_kek(_):
     """모든 DEK를 KEK_CURRENT로 다시 감싼다. 완료 후 이전 KEK를 KEK_KEYS에서 제거할 수 있다."""
+    from app import crypto
+
     with pool.connection() as conn:
         set_rls_context(conn, None, "system")
         for table, ctx in ENVELOPE_TABLES:

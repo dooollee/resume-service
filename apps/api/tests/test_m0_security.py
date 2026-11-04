@@ -1,6 +1,8 @@
 """M0 보안 수용 기준(명세 §9 중 해당 항목). 모든 값은 합성 데이터."""
 
 import logging
+import os
+import subprocess
 import sys
 
 import pytest
@@ -144,3 +146,9 @@ def test_non_public_routes_denied_by_default(client):
 
 def test_openapi_hidden_outside_dev(client):
     assert client.get("/openapi.json").status_code == 404
+
+
+def test_cli_import_needs_no_keys():
+    """migrate 서비스는 최소 권한으로 KEK/BIDX 키를 받지 않는다 → app.cli import가 키를 요구하면 안 된다."""
+    env = {k: v for k, v in os.environ.items() if k not in ("KEK_KEYS", "KEK_CURRENT", "BIDX_KEY")}
+    subprocess.run([sys.executable, "-c", "import app.cli"], env=env, check=True)

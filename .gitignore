@@ -14,3 +14,6 @@ next-env.d.ts
 *.pdf
 *.docx
 *.hwp
+# 예외: 합성(가짜) 샘플만. 이 이름으로 실제 이력서를 두지 말 것
+!samples/dummy_resume_*.pdf
+!samples/dummy_resume_*.docx

@@ -26,6 +26,6 @@ python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.txt   # Wi
 npm ci && npm run typecheck && npm run build && npm audit --audit-level=high
 
 # 전체 (Docker)
-cp .env.example .env   # 값 채우기
+python scripts/make_env.py   # .env 생성(비밀값 난수)
 docker compose up --build
 ```

@@ -313,3 +313,13 @@ def test_app_role_has_no_ddl_or_superuser():
         assert not any(role.values())
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute("CREATE TABLE evil (id int)")
+
+
+def test_create_user_rejects_non_ascii_email():
+    from fastapi import HTTPException
+
+    from app.admin import create_user
+
+    with pool.connection() as conn, pytest.raises(HTTPException) as e:
+        create_user(conn, "ㅁadmin@example.com", "admin", "unused-" + PASSWORD)
+    assert e.value.status_code == 422
