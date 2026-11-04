@@ -11,6 +11,7 @@ from app.core import config
 from app.core.logging import setup_logging
 from app.core.middleware import edge
 from app.db import pool
+from app.resumes import review as resume_review
 from app.resumes import routes as resume_routes
 
 setup_logging(config.LOG_LEVEL)
@@ -34,6 +35,7 @@ api = FastAPI(
 api.include_router(auth_routes.router)
 api.include_router(admin.router)
 api.include_router(resume_routes.router)
+api.include_router(resume_review.router)
 
 
 @api.exception_handler(RequestValidationError)

@@ -245,7 +245,7 @@ def test_sandbox_gets_no_secrets(monkeypatch):
 
     monkeypatch.setattr(sandbox.subprocess, "run", fake_run)
     sandbox.run(b"", "application/pdf")
-    assert set(seen) <= {"PATH", "PYTHONIOENCODING", "SYSTEMROOT"}
+    assert set(seen) <= {"PATH", "SYSTEMROOT"}
 
 
 @pytest.mark.parametrize(

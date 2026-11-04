@@ -17,7 +17,9 @@
 | 악성코드 스캔 fail closed(스캐너 장애 시 파싱 안 함) | M3 ✅ | `test_scanner_unavailable_fails_closed`, `test_clamd_*` |
 | 격리 파싱(비밀값 없는 환경, rlimit, 감사 훅으로 네트워크·프로세스·쓰기 차단, stderr 폐기) | M3 ✅ | `test_sandbox_*` |
 | 버킷/파일 URL 직접 접근 불가 | M3 ✅ (설계) | 파일은 DB 안 암호문으로만 존재, 인증 API로만 제공 |
-| 주민등록번호 비저장 | M4 (로그 마스킹은 M0 ✅) | — |
+| 주민등록번호 비저장(추출 시 폐기, 수동 입력 거부) | M4 ✅ | `test_m4_extraction.py::test_rrn_never_stored_*`, `test_manual_rrn_entry_rejected` |
+| 사진 EXIF/GPS 제거·해상도 제한 | M4 ✅ | `test_rrn_never_stored_and_photo_metadata_stripped` |
+| 추출 정확도(합성 20건) | M4 ✅ 100% | `test_field_accuracy_on_20_synthetic_resumes` |
 | 역할별 마스킹·열람 사유 | M5 | — |
 | 보존기간 파기·crypto-shredding | M6 | — |
 

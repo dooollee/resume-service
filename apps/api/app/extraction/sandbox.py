@@ -62,7 +62,7 @@ def _child_main() -> None:
         out = {"ok": False, "code": "resource_limit"}
     except Exception:
         out = {"ok": False, "code": "parse_error"}
-    sys.stdout.write(json.dumps(out, ensure_ascii=False))
+    sys.stdout.buffer.write(json.dumps(out).encode())  # -E라 PYTHONIOENCODING 무시됨 → 바이트로 직접
 
 
 def _limits() -> None:  # pragma: no cover — Linux 자식 프로세스에서만 실행
@@ -77,7 +77,7 @@ def _limits() -> None:  # pragma: no cover — Linux 자식 프로세스에서�
 
 def run(content: bytes, mime: str) -> dict:
     """부모 쪽: 샌드박스 프로세스를 띄우고 결과 JSON을 반환. 실패는 code로만 표현한다."""
-    env = {"PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf-8"}
+    env = {"PATH": os.environ.get("PATH", "")}
     if os.name == "nt":
         env["SYSTEMROOT"] = os.environ.get("SYSTEMROOT", "")
     try:
