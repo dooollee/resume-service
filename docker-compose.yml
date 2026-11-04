@@ -1,5 +1,5 @@
 # 개발용. 호스트에는 웹(127.0.0.1:3000)만 연다. API·DB는 내부 네트워크에만 존재한다.
-#   브라우저 → web(Next.js, BFF) → api → postgres
+#   브라우저 → web(Next.js, BFF) → api → postgres ← worker → clamav
 x-hardening: &hardening
   read_only: true
   cap_drop: [ALL]
@@ -53,6 +53,31 @@ services:
     # egress: 유출 비밀번호 검사(HIBP)용 외부 HTTPS
     networks: [data, app, egress]
 
+  # 업로드 → 악성코드 스캔 → 격리 샌드박스 파싱. 외부망 없음(DB·스캐너만).
+  worker:
+    <<: *hardening
+    build: ./apps/api
+    command: ["python", "-m", "app.worker"]
+    environment:
+      <<: *api-env
+      CLAMD_HOST: clamav
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      clamav: { condition: service_healthy }
+    networks: [data, scan]
+    mem_limit: 2g
+    pids_limit: 64
+
+  clamav:
+    image: clamav/clamav:1.5.4-debian13-slim
+    volumes: [clamdb:/var/lib/clamav]
+    networks: [scan, egress]  # egress: 서명 DB 업데이트(freshclam)
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      retries: 20
+      start_period: 300s
+
   web:
     <<: *hardening
     build:
@@ -70,8 +95,10 @@ networks:
   app:
     internal: true
     ipam: { config: [{ subnet: 172.30.0.0/24 }] }
+  scan: { internal: true }
   egress: {}
   public: {}
 
 volumes:
   pgdata: {}
+  clamdb: {}

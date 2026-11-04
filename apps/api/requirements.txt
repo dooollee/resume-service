@@ -4,3 +4,8 @@ cryptography==50.0.2
 psycopg[binary]==3.3.8
 psycopg-pool==3.3.3
 argon2-cffi==25.1.0
+python-multipart==0.0.33
+pdfplumber==0.11.10
+pdfminer.six==20260107
+python-docx==1.2.0
+pillow==13.0.0

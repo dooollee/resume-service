@@ -13,10 +13,28 @@
 | 감사 로그 append-only·해시 체인 변조 탐지 | M1 ✅ | `test_m1_auth.py::test_audit_*` |
 | 앱 DB 계정 DDL/슈퍼유저 권한 없음 | M1 ✅ | `test_m1_auth.py::test_app_role_has_no_ddl_or_superuser` |
 | 필드 암호화·블라인드 인덱스·키 로테이션 | M2 ✅ (모듈) | `test_crypto.py` |
-| 파일 검증·악성코드 스캔·격리 워커 | M3 | — |
+| 악성/변조 파일 거부(매크로, 외부 참조, 압축폭탄, 중첩 아카이브, JS·Launch PDF, 확장자 위조) | M3 ✅ | `test_m3_upload.py::test_worker_pipeline`, `test_upload_rejects_spoofed_or_oversized` |
+| 악성코드 스캔 fail closed(스캐너 장애 시 파싱 안 함) | M3 ✅ | `test_scanner_unavailable_fails_closed`, `test_clamd_*` |
+| 격리 파싱(비밀값 없는 환경, rlimit, 감사 훅으로 네트워크·프로세스·쓰기 차단, stderr 폐기) | M3 ✅ | `test_sandbox_*` |
+| 버킷/파일 URL 직접 접근 불가 | M3 ✅ (설계) | 파일은 DB 안 암호문으로만 존재, 인증 API로만 제공 |
 | 주민등록번호 비저장 | M4 (로그 마스킹은 M0 ✅) | — |
 | 역할별 마스킹·열람 사유 | M5 | — |
 | 보존기간 파기·crypto-shredding | M6 | — |
+
+## 파일 처리 격리 구조
+
+```
+업로드(API) ─ 매직바이트·확장자·크기 검사 ─▶ DEK로 암호화해 DB 저장(UPLOADED)
+worker ─ 복호화 → clamd INSTREAM 스캔 ─ 감염: 파일 삭제 + FAILED(malware) + 알림
+                                     ─ 스캐너 장애: 대기열로 되돌림(파싱 안 함)
+       └▶ sandbox 프로세스 (python -B -E -s, 비밀값 없는 env, Linux rlimit: 메모리 1GiB·CPU 30s·파일쓰기 0,
+                            감사 훅: socket/subprocess/exec/쓰기 open 차단, 타임아웃 60s, stderr 폐기)
+            ─ 구조 검사(PDF 객체 스트림 포함 전수 검사 / DOCX zip 메타·rels) → 추출 → JSON
+       └▶ 샌드박스 출력도 스키마 검증 후 저장(REVIEW)
+```
+
+- worker 컨테이너는 외부망이 없고 DB와 clamav에만 접근한다. 읽기 전용 루트 파일시스템, 메모리 2GiB, PID 64개로 제한된다.
+- 남은 위험: 샌드박스 프로세스는 같은 컨테이너의 네트워크 네임스페이스를 공유한다. 네이티브 코드 실행 취약점이 터지면 DB 포트까지는 닿을 수 있지만, 자격증명은 환경에 없다. 운영에서 더 강하게 막으려면 gVisor나 별도의 `network_mode: none` 파서 컨테이너를 쓴다.
 
 ## 개발 환경 규칙
 - 운영 데이터를 개발/스테이징으로 복사하지 않는다. 테스트 데이터는 합성 데이터만.
