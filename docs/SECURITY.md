@@ -23,7 +23,9 @@
 | 검색 결과 역할별 마스킹(viewer는 신원 없음·회사/학교 일반화) | M5 ✅ | `test_m5_search.py::test_results_masked_*`, `test_viewer_*` |
 | viewer 마스킹 해제 거부 | M5 ✅ | `test_viewer_cannot_reveal_or_see_photo` |
 | 마스킹 해제·검색이 감사 로그에 남음(검색어 PII는 해시) | M5 ✅ | `test_reveal_flow_*`, `test_search_audit_hashes_identity_terms` |
-| 보존기간 파기·crypto-shredding | M6 | — |
+| 보존기간 경과 자동 파기 + 키 폐기(crypto-shredding) | M6 ✅ | `test_m6_retention.py::test_retention_expiry_*`, `test_purge_after_grace_is_unrecoverable` |
+| 파기 후 DB·파일·사진·인덱스에서 복구 불가 | M6 ✅ | `test_purge_after_grace_is_unrecoverable` |
+| 삭제 요청 즉시 비활성화(검색·열람 허가 회수) | M6 ✅ | `test_delete_request_deactivates_immediately` |
 
 ## 파일 처리 격리 구조
 
@@ -39,6 +41,11 @@ worker ─ 복호화 → clamd INSTREAM 스캔 ─ 감염: 파일 삭제 + FAILE
 
 - worker 컨테이너는 외부망이 없고 DB와 clamav에만 접근한다. 읽기 전용 루트 파일시스템, 메모리 2GiB, PID 64개로 제한된다.
 - 남은 위험: 샌드박스 프로세스는 같은 컨테이너의 네트워크 네임스페이스를 공유한다. 네이티브 코드 실행 취약점이 터지면 DB 포트까지는 닿을 수 있지만, 자격증명은 환경에 없다. 운영에서 더 강하게 막으려면 gVisor나 별도의 `network_mode: none` 파서 컨테이너를 쓴다.
+
+## 보존·파기와 백업
+- 파기 배치는 worker가 1시간마다 실행한다(`python -m app.cli purge`로 수동 실행도 가능). 삭제 요청분은 유예 7일 후, 보존기간이 끝난 것은 바로 파기한다.
+- 파기하면 `resumes` 행이 지워지고, CASCADE로 하위 데이터 전체와 레코드별 DEK가 함께 사라진다. PostgreSQL에 남는 dead tuple은 autovacuum이 정리하며, 그전이라도 DEK가 없으므로 복호화할 수 없다.
+- **백업**: 백업은 암호화한다(볼륨·백업 저장소 암호화). 보존기간은 최대 30일(잠정)이며 기간이 지나면 자동 만료된다. 백업에서 복구한 뒤에는 첫 작업으로 `purge`를 실행해 이미 파기했어야 할 레코드를 다시 지운다. 복구 훈련은 분기마다 하고 결과를 이 문서에 남긴다.
 
 ## 개발 환경 규칙
 - 운영 데이터를 개발/스테이징으로 복사하지 않는다. 테스트 데이터는 합성 데이터만.

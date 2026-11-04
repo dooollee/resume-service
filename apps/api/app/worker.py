@@ -10,7 +10,7 @@ import time
 
 from pydantic import ValidationError
 
-from app import audit, scanner
+from app import audit, retention, scanner
 from app.core import config
 from app.core.logging import setup_logging
 from app.db import pool, set_rls_context
@@ -20,6 +20,7 @@ from app.resumes.schemas import ResumeData
 
 log = logging.getLogger("app.worker")
 STUCK_MINUTES = 10
+PURGE_INTERVAL_SECONDS = 3600
 
 
 def _set_status(rid, status: str, failure_code: str | None = None, warnings: list[str] | None = None) -> None:
@@ -110,8 +111,12 @@ def main() -> None:
     setup_logging(config.LOG_LEVEL)
     pool.open(wait=True)
     log.info("worker started")
+    last_purge = 0.0
     while True:
         try:
+            if time.monotonic() - last_purge > PURGE_INTERVAL_SECONDS:
+                retention.purge()
+                last_purge = time.monotonic()
             outcome = run_once()
         except Exception:
             log.exception("worker iteration failed")

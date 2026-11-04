@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Shell, { useMe } from "@/components/Shell";
 import { api } from "@/lib/api";
+import { saveBlob } from "@/lib/resume";
 
 type Detail = {
   id: string;
@@ -62,6 +63,27 @@ function ResumeDetail() {
     try {
       setRevealed(await api<Revealed>(`/resumes/${id}/reveal`, { json: { reason } }));
       setModal(false);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function requestDeletion() {
+    if (!window.confirm("이 이력서를 삭제 요청할까요? 즉시 검색에서 제외되고 유예기간 후 영구 파기됩니다.")) return;
+    try {
+      await api(`/resumes/${id}`, { method: "DELETE" });
+      window.location.assign("/search");
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function exportForSubject() {
+    const reason = window.prompt("정보주체 열람 요청 사유 (예: 요청 접수번호)");
+    if (!reason) return;
+    try {
+      const data = await api(`/resumes/${id}/export`, { json: { reason } });
+      saveBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), `${id}-export.json`);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -137,6 +159,20 @@ function ResumeDetail() {
           <h2 className="font-semibold">자기소개</h2>
           {revealed.intro}
         </section>
+      )}
+
+      {me?.role !== "viewer" && (
+        <div className="flex gap-2 text-sm">
+          {me?.role === "admin" && (
+            <button onClick={exportForSubject} className="rounded border px-3 py-1">
+              정보주체 열람용 내보내기
+            </button>
+          )}
+          <button onClick={requestDeletion} className="rounded border border-red-300 px-3 py-1 text-red-700">
+            삭제 요청
+          </button>
+          {error && <span className="text-red-600">{error}</span>}
+        </div>
       )}
 
       {modal && (

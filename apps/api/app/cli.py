@@ -47,7 +47,13 @@ def cmd_rotate_kek(_):
             print(f"{table}: {len(rows)} rewrapped")
 
 
-COMMANDS = {"migrate": cmd_migrate, "create-admin": cmd_create_admin, "rotate-kek": cmd_rotate_kek}
+def cmd_purge(_):
+    from app.retention import purge
+
+    print("purged:", purge())
+
+
+COMMANDS = {"migrate": cmd_migrate, "create-admin": cmd_create_admin, "rotate-kek": cmd_rotate_kek, "purge": cmd_purge}
 
 
 def main(argv=None):
