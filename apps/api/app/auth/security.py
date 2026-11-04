@@ -72,7 +72,7 @@ def new_totp_secret() -> bytes:
 def totp_at(secret: bytes, step: int) -> str:
     mac = hmac.new(secret, step.to_bytes(8, "big"), hashlib.sha1).digest()
     offset = mac[-1] & 0x0F
-    return f"{(int.from_bytes(mac[offset:offset + 4], 'big') & 0x7FFFFFFF) % 1_000_000:06d}"
+    return f"{(int.from_bytes(mac[offset : offset + 4], 'big') & 0x7FFFFFFF) % 1_000_000:06d}"
 
 
 def verify_totp(secret: bytes, code: str, last_step: int) -> int | None:

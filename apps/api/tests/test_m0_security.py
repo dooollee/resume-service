@@ -120,7 +120,9 @@ def test_cross_origin_state_change_rejected(client):
 
 def test_cors_not_enabled(client):
     # BFF 구조: 브라우저는 같은 오리진(Next.js)만 호출하므로 CORS 허용 헤더를 절대 내보내지 않는다.
-    r = client.options("/health", headers={"origin": "https://web.example.test", "access-control-request-method": "GET"})
+    r = client.options(
+        "/health", headers={"origin": "https://web.example.test", "access-control-request-method": "GET"}
+    )
     assert "access-control-allow-origin" not in r.headers
 
 

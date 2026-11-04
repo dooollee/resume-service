@@ -35,16 +35,21 @@ def bootstrap(admin_url: str, app_password: str) -> None:
             "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO resume_app"
         )
         c.execute(
-            "ALTER DEFAULT PRIVILEGES FOR ROLE resume_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO resume_app"
+            "ALTER DEFAULT PRIVILEGES FOR ROLE resume_owner IN SCHEMA public "
+            "GRANT USAGE, SELECT ON SEQUENCES TO resume_app"
         )
-        c.execute("ALTER DEFAULT PRIVILEGES FOR ROLE resume_owner IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC")
+        c.execute(
+            "ALTER DEFAULT PRIVILEGES FOR ROLE resume_owner IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC"
+        )
 
 
 def migrate(admin_url: str) -> list[str]:
     applied = []
     with psycopg.connect(admin_url) as c:
         c.execute("SET ROLE resume_owner")
-        c.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
+        c.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz DEFAULT now())"
+        )
         c.execute("REVOKE ALL ON schema_migrations FROM resume_app")
         c.commit()
         done = {r[0] for r in c.execute("SELECT name FROM schema_migrations")}

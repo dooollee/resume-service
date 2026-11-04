@@ -77,9 +77,12 @@ def _clean():
     ratelimit.reset()
     with admin_conn() as c:
         c.execute("SET session_replication_role = replica")  # append-only 트리거 우회(테스트 정리용)
-        tables = [r["tablename"] for r in c.execute(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'schema_migrations'"
-        )]
+        tables = [
+            r["tablename"]
+            for r in c.execute(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'schema_migrations'"
+            )
+        ]
         c.execute("TRUNCATE " + ", ".join(f'"{t}"' for t in tables) + " CASCADE")
     yield
 
@@ -136,3 +139,64 @@ def login(client, user, *, stepup=False):
 def audit_actions():
     with admin_conn() as c:
         return [r["action"] for r in c.execute("SELECT action FROM audit_logs ORDER BY id")]
+
+
+def ctx(conn, user, role=None):
+    from app.db import set_rls_context
+
+    set_rls_context(conn, user["id"] if user else None, role or user["role"])
+    return conn
+
+
+SAMPLE = {
+    "identity": {
+        "name": "김가상",
+        "phone": "010-2222-3333",
+        "email": "kim.gasang@example.test",
+        "birth": "1995-04-12",
+        "gender": "여",
+        "address": "서울특별시 가상구 테스트로 1",
+    },
+    "intro": "합성 자기소개 문장입니다.",
+    "education": [
+        {"school": "가상대학교", "major": "컴퓨터공학", "degree": "학사", "start_ym": "2014-03", "end_ym": "2018-02"}
+    ],
+    "career": [
+        {
+            "company": "예시주식회사",
+            "title": "백엔드 개발자",
+            "start_ym": "2018-03",
+            "end_ym": "2022-12",
+            "description": "합성 담당업무 설명",
+        }
+    ],
+    "skills": [{"name": "Python", "level": "고급", "years": 5}, {"name": "React", "level": "중급", "years": 2}],
+    "certs": [{"name": "정보처리기사", "issuer": "한국산업인력공단", "acquired_ym": "2017-11"}],
+}
+
+
+def make_resume(owner, data=None, status="CONFIRMED"):
+    """RLS를 거쳐(소유자 컨텍스트로) 합성 이력서를 만든다."""
+    from datetime import UTC, datetime, timedelta
+
+    from app import crypto
+    from app.resumes import store
+    from app.resumes.schemas import ResumeData
+
+    rid = str(uuid.uuid4())
+    with pool.connection() as conn:
+        ctx(conn, owner)
+        dek = store.create(
+            conn,
+            rid,
+            owner["id"],
+            consent_at=datetime.now(UTC),
+            consent_version="v1",
+            retention_until=datetime.now(UTC) + timedelta(days=365),
+            sha256=crypto.sha256(rid.encode()),
+            mime="application/pdf",
+        )
+        store.save(conn, rid, dek, ResumeData.model_validate(data or SAMPLE))
+        store.put_file(conn, rid, dek, "source", b"%PDF-1.7 synthetic", "synthetic.pdf")
+        conn.execute("UPDATE resumes SET status = %s WHERE id = %s", (status, rid))
+    return rid

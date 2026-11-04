@@ -89,14 +89,19 @@ def login(body: LoginIn, request: Request, response: Response, conn=Depends(get_
     locked = u and u["locked_until"] and u["locked_until"] > datetime.now(UTC)
     if not u or u["disabled"] or locked:
         security.verify_password(security.DUMMY_HASH, body.password)  # 응답 시간으로 계정 존재를 알 수 없게
-        audit.record("auth.login.fail", request=request, actor_id=u["id"] if u else None,
-                     detail={"reason": "unknown" if not u else "locked_or_disabled"})
+        audit.record(
+            "auth.login.fail",
+            request=request,
+            actor_id=u["id"] if u else None,
+            detail={"reason": "unknown" if not u else "locked_or_disabled"},
+        )
         return JSONResponse(status_code=401, content={"detail": GENERIC_LOGIN_ERROR})
     if not security.verify_password(u["password_hash"], body.password):
         return _register_failure(conn, u["id"], request, "login")
     if security.ph.check_needs_rehash(u["password_hash"]):
-        conn.execute("UPDATE users SET password_hash = %s WHERE id = %s",
-                     (security.hash_password(body.password), u["id"]))
+        conn.execute(
+            "UPDATE users SET password_hash = %s WHERE id = %s", (security.hash_password(body.password), u["id"])
+        )
     conn.execute("UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = %s", (u["id"],))
     _new_session(conn, u["id"], request, response, mfa_ok=False)
     audit.record("auth.login.password_ok", request=request, actor_id=u["id"])
@@ -105,22 +110,26 @@ def login(body: LoginIn, request: Request, response: Response, conn=Depends(get_
 
 @router.post("/mfa/enroll")
 def mfa_enroll(request: Request, user: User = Depends(require_auth), conn=Depends(get_conn)):
-    u = conn.execute("SELECT id, email_enc, dek_wrapped, key_version, mfa_enabled FROM users WHERE id = %s",
-                     (user.id,)).fetchone()
+    u = conn.execute(
+        "SELECT id, email_enc, dek_wrapped, key_version, mfa_enabled FROM users WHERE id = %s", (user.id,)
+    ).fetchone()
     if u["mfa_enabled"]:
         raise HTTPException(409, "MFA already enabled")
     dek = user_dek(u)
     secret = security.new_totp_secret()
-    conn.execute("UPDATE users SET mfa_secret_enc = %s WHERE id = %s",
-                 (crypto.encrypt(dek, f"user:{u['id']}|mfa_secret", secret), u["id"]))
+    conn.execute(
+        "UPDATE users SET mfa_secret_enc = %s WHERE id = %s",
+        (crypto.encrypt(dek, f"user:{u['id']}|mfa_secret", secret), u["id"]),
+    )
     email = crypto.decrypt_str(dek, f"user:{u['id']}|email", u["email_enc"])
     audit.record("auth.mfa.enroll_start", request=request)
     return {"secret": base64.b32encode(secret).decode().rstrip("="), "otpauth_uri": security.otpauth_uri(secret, email)}
 
 
 @router.post("/mfa/verify")
-def mfa_verify(body: MfaIn, request: Request, response: Response, user: User = Depends(require_auth),
-               conn=Depends(get_conn)):
+def mfa_verify(
+    body: MfaIn, request: Request, response: Response, user: User = Depends(require_auth), conn=Depends(get_conn)
+):
     ratelimit.limit(f"mfa:{user.id}", 5, 300)
     u = conn.execute("SELECT * FROM users WHERE id = %s", (user.id,)).fetchone()
     if not u["mfa_secret_enc"]:
@@ -156,8 +165,9 @@ def mfa_verify(body: MfaIn, request: Request, response: Response, user: User = D
 
 
 @router.post("/password")
-def change_password(body: PasswordIn, request: Request, response: Response, user: User = Depends(require_auth),
-                    conn=Depends(get_conn)):
+def change_password(
+    body: PasswordIn, request: Request, response: Response, user: User = Depends(require_auth), conn=Depends(get_conn)
+):
     ratelimit.limit(f"password:{user.id}", 5, 300)
     u = conn.execute("SELECT password_hash FROM users WHERE id = %s", (user.id,)).fetchone()
     if not security.verify_password(u["password_hash"], body.current_password):
@@ -165,8 +175,10 @@ def change_password(body: PasswordIn, request: Request, response: Response, user
     if body.new_password == body.current_password:
         raise HTTPException(422, "새 비밀번호는 현재 비밀번호와 달라야 합니다")
     security.check_password_policy(body.new_password)
-    conn.execute("UPDATE users SET password_hash = %s, must_change_password = false WHERE id = %s",
-                 (security.hash_password(body.new_password), user.id))
+    conn.execute(
+        "UPDATE users SET password_hash = %s, must_change_password = false WHERE id = %s",
+        (security.hash_password(body.new_password), user.id),
+    )
     conn.execute("DELETE FROM sessions WHERE user_id = %s AND id <> %s", (user.id, user.session_id))
     _rotate_session(conn, user, request, response, mfa_ok=True)
     audit.record("auth.password.changed", request=request)
@@ -202,5 +214,11 @@ def logout(request: Request, response: Response, user: User = Depends(require_au
 def me(user: User = Depends(require_auth), conn=Depends(get_conn)):
     u = conn.execute("SELECT mfa_enabled, must_change_password FROM users WHERE id = %s", (user.id,)).fetchone()
     stepup = bool(user.stepup_at and datetime.now(UTC) - user.stepup_at < timedelta(minutes=config.STEPUP_MINUTES))
-    return {"id": user.id, "role": user.role, "mfa_ok": user.mfa_ok, "mfa_enabled": u["mfa_enabled"],
-            "must_change_password": u["must_change_password"], "stepup_valid": stepup}
+    return {
+        "id": user.id,
+        "role": user.role,
+        "mfa_ok": user.mfa_ok,
+        "mfa_enabled": u["mfa_enabled"],
+        "must_change_password": u["must_change_password"],
+        "stepup_valid": stepup,
+    }

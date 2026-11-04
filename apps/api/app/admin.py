@@ -47,8 +47,15 @@ def create_user(conn, email: str, role: str, password: str) -> str:
     conn.execute(
         "INSERT INTO users (id, email_bidx, email_enc, dek_wrapped, key_version, password_hash, role)"
         " VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        (user_id, email_bidx(email), crypto.encrypt(dek, f"user:{user_id}|email", email), wrapped, version,
-         security.hash_password(password), role),
+        (
+            user_id,
+            email_bidx(email),
+            crypto.encrypt(dek, f"user:{user_id}|email", email),
+            wrapped,
+            version,
+            security.hash_password(password),
+            role,
+        ),
     )
     return user_id
 
@@ -75,8 +82,9 @@ def list_users(request: Request, conn=Depends(get_conn)):
 @router.post("/admin/users", status_code=201)
 def add_user(body: UserCreate, request: Request, conn=Depends(get_conn)):
     user_id = create_user(conn, body.email, body.role, body.password)
-    audit.record("admin.user.create", request=request, resource_type="user", resource_id=user_id,
-                 detail={"role": body.role})
+    audit.record(
+        "admin.user.create", request=request, resource_type="user", resource_id=user_id, detail={"role": body.role}
+    )
     return {"id": user_id}
 
 
@@ -111,13 +119,20 @@ def update_user(user_id: uuid.UUID, body: UserPatch, request: Request, conn=Depe
         changed.append("reset_mfa")
     if body.password:
         security.check_password_policy(body.password)
-        conn.execute("UPDATE users SET password_hash = %s, must_change_password = true WHERE id = %s",
-                     (security.hash_password(body.password), user_id))
+        conn.execute(
+            "UPDATE users SET password_hash = %s, must_change_password = true WHERE id = %s",
+            (security.hash_password(body.password), user_id),
+        )
         changed.append("password")
     if set(changed) - {"unlock"}:
         conn.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))  # 권한 변경 즉시 반영
-    audit.record("admin.user.update", request=request, resource_type="user", resource_id=user_id,
-                 detail={"changed": changed, "role": body.role})
+    audit.record(
+        "admin.user.update",
+        request=request,
+        resource_type="user",
+        resource_id=user_id,
+        detail={"changed": changed, "role": body.role},
+    )
     return {"changed": changed}
 
 

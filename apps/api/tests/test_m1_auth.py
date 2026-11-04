@@ -93,8 +93,10 @@ def test_lockout_after_5_failures(client):
 
 
 def test_login_rate_limited_per_ip(client):
-    codes = [client.post("/auth/login", json={"email": "x@example.test", "password": "y" * 12}).status_code
-             for _ in range(21)]
+    codes = [
+        client.post("/auth/login", json={"email": "x@example.test", "password": "y" * 12}).status_code
+        for _ in range(21)
+    ]
     assert codes[-1] == 429
 
 
@@ -163,7 +165,9 @@ def test_logout_invalidates_session(client):
     login(client, make_user())
     sid = client.cookies["__Host-sid"]
     assert client.post("/auth/logout").status_code == 200
-    assert TestClient(app, base_url="https://testserver", cookies={"__Host-sid": sid}).get("/auth/me").status_code == 401
+    assert (
+        TestClient(app, base_url="https://testserver", cookies={"__Host-sid": sid}).get("/auth/me").status_code == 401
+    )
 
 
 def test_password_policy_min_length(client):
@@ -227,14 +231,21 @@ def admin_client(client):
 
 def test_admin_user_management(admin_client):
     client, admin = admin_client
-    r = client.post("/admin/users", json={"email": "New.Recruiter@Example.test", "role": "recruiter",
-                                          "password": "initial-password-123"})
+    r = client.post(
+        "/admin/users",
+        json={"email": "New.Recruiter@Example.test", "role": "recruiter", "password": "initial-password-123"},
+    )
     assert r.status_code == 201
     new_id = r.json()["id"]
     users = client.get("/admin/users").json()
     assert any(u["email"] == "new.recruiter@example.test" for u in users)
-    assert client.post("/admin/users", json={"email": "new.recruiter@example.test", "role": "viewer",
-                                             "password": "initial-password-123"}).status_code == 409
+    assert (
+        client.post(
+            "/admin/users",
+            json={"email": "new.recruiter@example.test", "role": "viewer", "password": "initial-password-123"},
+        ).status_code
+        == 409
+    )
     # 비활성화하면 세션도 즉시 폐기
     target = login(TestClient(app, base_url="https://testserver"), make_user("viewer"))
     target_id = target.get("/auth/me").json()["id"]
@@ -296,8 +307,9 @@ def test_audit_reason_is_redacted():
 
 def test_app_role_has_no_ddl_or_superuser():
     with pool.connection() as conn:
-        role = conn.execute("SELECT rolsuper, rolbypassrls, rolcreatedb, rolcreaterole FROM pg_roles"
-                            " WHERE rolname = current_user").fetchone()
+        role = conn.execute(
+            "SELECT rolsuper, rolbypassrls, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = current_user"
+        ).fetchone()
         assert not any(role.values())
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute("CREATE TABLE evil (id int)")

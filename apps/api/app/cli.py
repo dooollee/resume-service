@@ -9,7 +9,7 @@ from app import crypto
 from app.db import pool, set_rls_context
 
 # (테이블, DEK 컨텍스트 접두사) — 봉투 암호화를 쓰는 테이블
-ENVELOPE_TABLES = [("users", "user")]
+ENVELOPE_TABLES = [("users", "user"), ("resumes", "resume")]
 
 
 def cmd_migrate(_):
@@ -40,8 +40,10 @@ def cmd_rotate_kek(_):
             ).fetchall()
             for r in rows:
                 wrapped, version = crypto.rewrap(r["dek_wrapped"], r["key_version"], f"{ctx}:{r['id']}")
-                conn.execute(f"UPDATE {table} SET dek_wrapped = %s, key_version = %s WHERE id = %s",  # noqa: S608
-                             (wrapped, version, r["id"]))
+                conn.execute(
+                    f"UPDATE {table} SET dek_wrapped = %s, key_version = %s WHERE id = %s",  # noqa: S608
+                    (wrapped, version, r["id"]),
+                )
             print(f"{table}: {len(rows)} rewrapped")
 
 

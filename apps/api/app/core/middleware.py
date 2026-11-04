@@ -23,8 +23,13 @@ access_log = logging.getLogger("app.access")
 
 async def _reject(send, status: int, detail: str) -> None:
     body = json.dumps({"detail": detail}).encode()
-    await send({"type": "http.response.start", "status": status,
-                "headers": [(b"content-type", b"application/json"), *SECURITY_HEADERS]})
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": [(b"content-type", b"application/json"), *SECURITY_HEADERS],
+        }
+    )
     await send({"type": "http.response.body", "body": body})
 
 

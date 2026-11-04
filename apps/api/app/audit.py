@@ -29,9 +29,21 @@ THRESHOLDS = {
 
 def _digest(prev: bytes, e: dict) -> bytes:
     canonical = json.dumps(
-        [e["ts"].astimezone(UTC).isoformat(), e["actor_id"], e["action"], e["resource_type"], e["resource_id"],
-         e["ip"], e["user_agent"], e["reason"], e["detail"]],
-        sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str,
+        [
+            e["ts"].astimezone(UTC).isoformat(),
+            e["actor_id"],
+            e["action"],
+            e["resource_type"],
+            e["resource_id"],
+            e["ip"],
+            e["user_agent"],
+            e["reason"],
+            e["detail"],
+        ],
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
     )
     return hashlib.sha256(bytes(prev) + canonical.encode()).digest()
 
@@ -40,8 +52,16 @@ def client_ip(request) -> str | None:
     return request.client.host if request is not None and request.client else None
 
 
-def record(action: str, *, request=None, actor_id=None, resource_type=None, resource_id=None,
-           reason: str | None = None, detail: dict | None = None) -> None:
+def record(
+    action: str,
+    *,
+    request=None,
+    actor_id=None,
+    resource_type=None,
+    resource_id=None,
+    reason: str | None = None,
+    detail: dict | None = None,
+) -> None:
     if actor_id is None and request is not None:
         user = getattr(request.state, "user", None)
         actor_id = user.id if user else None
@@ -64,8 +84,12 @@ def record(action: str, *, request=None, actor_id=None, resource_type=None, reso
             "INSERT INTO audit_logs (ts, actor_id, action, resource_type, resource_id, ip, user_agent, reason, detail,"
             " prev_hash, hash) VALUES (%(ts)s, %(actor_id)s, %(action)s, %(resource_type)s, %(resource_id)s, %(ip)s,"
             " %(user_agent)s, %(reason)s, %(detail)s, %(prev)s, %(hash)s)",
-            {**entry, "detail": json.dumps(detail) if detail is not None else None, "prev": prev,
-             "hash": _digest(prev, entry)},
+            {
+                **entry,
+                "detail": json.dumps(detail) if detail is not None else None,
+                "prev": prev,
+                "hash": _digest(prev, entry),
+            },
         )
     if not action.startswith("alert.") and entry["actor_id"]:
         _check_thresholds(entry, request)
@@ -99,8 +123,12 @@ def _check_thresholds(entry: dict, request) -> None:
             (entry["actor_id"], entry["action"], f"{minutes} minutes"),
         ).fetchone()["n"]
     if n == limit + 1:  # 임계치를 처음 넘는 순간 한 번만 알림
-        alert("bulk_" + entry["action"].replace(".", "_"), request=request, actor_id=entry["actor_id"],
-              detail={"count": n, "window_minutes": minutes})
+        alert(
+            "bulk_" + entry["action"].replace(".", "_"),
+            request=request,
+            actor_id=entry["actor_id"],
+            detail={"count": n, "window_minutes": minutes},
+        )
 
 
 def check_login_anomalies(conn, user_id: str, request) -> None:

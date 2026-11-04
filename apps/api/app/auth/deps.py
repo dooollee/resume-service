@@ -37,12 +37,15 @@ def require_auth(request: Request, conn=Depends(get_conn)) -> User | None:
         set_rls_context(conn, None, "anonymous")
         return None
     token = request.cookies.get(SESSION_COOKIE)
-    row = token and conn.execute(
-        "SELECT s.id, s.user_id, s.mfa_ok, s.csrf_token, s.created_at, s.last_seen_at, s.stepup_at,"
-        " u.role, u.disabled, u.must_change_password"
-        " FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = %s",
-        (hash_token(token),),
-    ).fetchone()
+    row = (
+        token
+        and conn.execute(
+            "SELECT s.id, s.user_id, s.mfa_ok, s.csrf_token, s.created_at, s.last_seen_at, s.stepup_at,"
+            " u.role, u.disabled, u.must_change_password"
+            " FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = %s",
+            (hash_token(token),),
+        ).fetchone()
+    )
     now = datetime.now(UTC)
     if (
         not row
@@ -81,7 +84,10 @@ def require_role(*roles: str):
     return dep
 
 
-def require_stepup(request: Request, user: User = Depends(require_role("admin"))) -> User:
+require_admin = require_role("admin")
+
+
+def require_stepup(request: Request, user: User = Depends(require_admin)) -> User:
     """관리자 기능: 최근 STEPUP_MINUTES 안에 비밀번호+TOTP 재인증을 요구한다."""
     if not user.stepup_at or datetime.now(UTC) - user.stepup_at > timedelta(minutes=config.STEPUP_MINUTES):
         raise HTTPException(403, "Step-up authentication required")
