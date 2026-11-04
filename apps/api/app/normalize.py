@@ -22,6 +22,15 @@ def phone(value: str | None) -> str | None:
     return f"+82{rest}" if rest.isdigit() and 8 <= len(rest) <= 10 else None
 
 
+def phone_display(e164: str | None) -> str | None:
+    """+821012345678 → 010-1234-5678, +8221234567 → 02-123-4567."""
+    if not e164 or not e164.startswith("+82"):
+        return e164
+    national = "0" + e164[3:]
+    head = 2 if national.startswith("02") else 3
+    return f"{national[:head]}-{national[head:-4]}-{national[-4:]}"
+
+
 def email(value: str | None) -> str | None:
     value = (value or "").strip().lower()
     return value if re.fullmatch(r"[^@\s]{1,64}@[^@\s]+\.[^@\s]+", value) else None

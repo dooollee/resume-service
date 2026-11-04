@@ -63,8 +63,13 @@ def get_file(conn, rid, dek, kind: str) -> tuple[bytes, str | None] | None:
 
 
 def save(conn, rid, dek, data: ResumeData) -> None:
-    """추출 결과/수정값 전체 교체."""
-    ident = data.identity
+    """추출 결과/수정값 전체 교체. 전화·이메일은 저장 경계에서 항상 정규화(블라인드 인덱스 일치 보장)."""
+    ident = data.identity.model_copy(
+        update={
+            "phone": normalize.phone(data.identity.phone) or data.identity.phone,
+            "email": normalize.email(data.identity.email) or data.identity.email,
+        }
+    )
     enc = {f: crypto.encrypt(dek, _aad(rid, f), getattr(ident, f)) for f in IDENTITY_FIELDS}
     conn.execute(
         "INSERT INTO resume_identity (resume_id, name_enc, name_bidx, phone_enc, phone_bidx, email_enc, email_bidx,"
@@ -114,6 +119,11 @@ def save(conn, rid, dek, data: ResumeData) -> None:
             "INSERT INTO resume_certs VALUES (%s, %s, %s, %s, %s)", (rid, pos, c.name, c.issuer, c.acquired_ym)
         )
     conn.execute("UPDATE resumes SET updated_at = now() WHERE id = %s", (rid,))
+
+
+def load_identity(conn, rid, dek: bytes) -> dict:
+    row = conn.execute("SELECT * FROM resume_identity WHERE resume_id = %s", (rid,)).fetchone()
+    return {f: crypto.decrypt_str(dek, _aad(rid, f), row[f"{f}_enc"]) for f in IDENTITY_FIELDS} if row else {}
 
 
 def load(conn, rid, dek: bytes | None) -> ResumeData:

@@ -20,7 +20,9 @@
 | 주민등록번호 비저장(추출 시 폐기, 수동 입력 거부) | M4 ✅ | `test_m4_extraction.py::test_rrn_never_stored_*`, `test_manual_rrn_entry_rejected` |
 | 사진 EXIF/GPS 제거·해상도 제한 | M4 ✅ | `test_rrn_never_stored_and_photo_metadata_stripped` |
 | 추출 정확도(합성 20건) | M4 ✅ 100% | `test_field_accuracy_on_20_synthetic_resumes` |
-| 역할별 마스킹·열람 사유 | M5 | — |
+| 검색 결과 역할별 마스킹(viewer는 신원 없음·회사/학교 일반화) | M5 ✅ | `test_m5_search.py::test_results_masked_*`, `test_viewer_*` |
+| viewer 마스킹 해제 거부 | M5 ✅ | `test_viewer_cannot_reveal_or_see_photo` |
+| 마스킹 해제·검색이 감사 로그에 남음(검색어 PII는 해시) | M5 ✅ | `test_reveal_flow_*`, `test_search_audit_hashes_identity_terms` |
 | 보존기간 파기·crypto-shredding | M6 | — |
 
 ## 파일 처리 격리 구조

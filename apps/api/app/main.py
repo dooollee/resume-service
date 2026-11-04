@@ -13,6 +13,7 @@ from app.core.middleware import edge
 from app.db import pool
 from app.resumes import review as resume_review
 from app.resumes import routes as resume_routes
+from app.resumes import search as resume_search
 
 setup_logging(config.LOG_LEVEL)
 
@@ -36,6 +37,7 @@ api.include_router(auth_routes.router)
 api.include_router(admin.router)
 api.include_router(resume_routes.router)
 api.include_router(resume_review.router)
+api.include_router(resume_search.router)
 
 
 @api.exception_handler(RequestValidationError)
