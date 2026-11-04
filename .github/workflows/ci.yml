@@ -18,7 +18,7 @@ jobs:
       TEST_ADMIN_DATABASE_URL: postgresql://postgres:ci-only-password@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       - run: sudo apt-get install -y fonts-nanum  # 합성 한글 PDF 생성용
       - run: pip install -r requirements-dev.txt
