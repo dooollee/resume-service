@@ -13,6 +13,9 @@ def limit(key: str, max_hits: int, window_seconds: int) -> None:
     # ponytail: 프로세스 메모리 기반 — API 인스턴스가 여러 개가 되면 DB/Redis 기반으로 교체.
     now = time.monotonic()
     with _lock:
+        if len(_hits) > 50_000:  # 키를 바꿔가며 메모리를 채우는 공격 방지: 창이 지난 키 정리
+            for k in [k for k, q in _hits.items() if not q or q[-1] <= now - 3600]:
+                del _hits[k]
         q = _hits[key]
         while q and q[0] <= now - window_seconds:
             q.popleft()
