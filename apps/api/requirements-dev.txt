@@ -1,7 +1,7 @@
 -r requirements.txt
 httpx==0.28.1
 pytest==9.2.0
-ruff==0.17.3
+ruff==0.17.4
 pip-audit==2.10.1
 # 로컬 테스트용 임시 PostgreSQL (CI는 서비스 컨테이너 사용)
 pgserver==0.1.4
